@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {DatabaseSync} from 'node:sqlite';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../app/api/sync/route.ts',import.meta.url),'utf8');
+const queries=[...source.matchAll(/db\.prepare\(`([\s\S]*?)`\)/g)].map(m=>m[1]);
+test('deletion removes server text and cannot be undone by a later stale upload',()=>{
+ const db=new DatabaseSync(':memory:');
+ db.exec('CREATE TABLE records(owner TEXT,id TEXT,payload TEXT,updated INTEGER,PRIMARY KEY(owner,id)); CREATE TABLE transcripts(owner TEXT,id TEXT,text TEXT,PRIMARY KEY(owner,id));');
+ const put=(payload)=>db.prepare(queries[0]).run('owner','message',JSON.stringify(payload),payload.updated);
+ put({id:'message',kind:'message',status:'done',text:'Original',updated:10});
+ db.prepare('INSERT INTO transcripts VALUES (?,?,?)').run('owner','message','Original');
+ put({id:'message',kind:'message',status:'done',text:'Edited',updated:20});
+ db.prepare(queries[2]).run('owner');assert.equal(db.prepare('SELECT text FROM transcripts').get().text,'Edited');
+ put({id:'message',kind:'message',deleted:true,updated:30});
+ db.prepare(queries[1]).run('owner','owner');assert.equal(db.prepare('SELECT count(*) AS n FROM transcripts').get().n,0);
+ put({id:'message',kind:'message',status:'done',text:'Late provider response',updated:999});
+ assert.equal(JSON.parse(db.prepare('SELECT payload FROM records').get().payload).deleted,true);
+ const transcribeSource=readFileSync(new URL('../app/api/transcribe/route.ts',import.meta.url),'utf8');
+ const insert=transcribeSource.match(/db\.prepare\("(INSERT INTO transcripts[^"\n]+)"\)/)[1];
+ db.prepare(insert).run('owner','message','Late provider response','owner','message');
+ assert.equal(db.prepare('SELECT count(*) AS n FROM transcripts').get().n,0);db.close();
+});

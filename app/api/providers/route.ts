@@ -1,0 +1,2 @@
+import {config,identity,json} from '@/lib/server';
+export async function GET(request:Request){if(!identity(request))return json({error:'Bitte anmelden.'},401);const c=config();return json({providers:[{id:'openai',name:'OpenAI',detail:'Präzise Transkription',ready:!!c.OPENAI_API_KEY},{id:'gemini',name:'Google Gemini',detail:'Audio mit Gemini',ready:!!c.GEMINI_API_KEY&&!!c.GEMINI_MODEL},{id:'custom',name:'Eigener Server',detail:'OpenAI-kompatibler Dienst',ready:!!c.STT_BASE_URL&&!!c.STT_MODEL}]});}
