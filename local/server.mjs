@@ -10,6 +10,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
 if (existsSync('.env.local')) process.loadEnvFile('.env.local');
 const port = Number(process.env.STIMMRAUM_PORT ?? 3000);
+const configuredPublicHost = String(process.env.STIMMRAUM_PUBLIC_HOST || '').trim();
 if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('STIMMRAUM_PORT muss eine gültige Portnummer sein.');
 const entrypoint = resolve(root, 'dist/server/index.js');
 if (!existsSync(entrypoint)) throw new Error('Build fehlt. Bitte zuerst npm run build:local ausführen.');
@@ -46,9 +47,22 @@ let actualPort = port;
 const server = createServer(async (incoming, outgoing) => {
   try {
     // Loopback binding and strict Host validation prevent exposing the single-user server to the LAN or DNS rebinding.
+    const incomingHost = incoming.headers.host || '';
     const hosts = new Set([`localhost:${actualPort}`, `127.0.0.1:${actualPort}`]);
-    if (!hosts.has(incoming.headers.host || '')) { outgoing.writeHead(403); outgoing.end('Localhost only'); return; }
-    const url = new URL(incoming.url || '/', `http://${incoming.headers.host}`);
+    if (!hosts.has(incomingHost)) { outgoing.writeHead(403); outgoing.end('Localhost only'); return; }
+    // Behind Nginx, keep the loopback Host validation but reconstruct the public
+    // origin so framework CSRF/origin checks compare against the browser's origin.
+    const forwardedHost = typeof incoming.headers['x-forwarded-host'] === 'string'
+      ? incoming.headers['x-forwarded-host'].split(',')[0].trim()
+      : '';
+    const forwardedProto = typeof incoming.headers['x-forwarded-proto'] === 'string'
+      ? incoming.headers['x-forwarded-proto'].split(',')[0].trim()
+      : '';
+    const proxyOrigin = configuredPublicHost && forwardedHost === configuredPublicHost &&
+      (forwardedProto === 'http' || forwardedProto === 'https')
+      ? forwardedProto + '://' + forwardedHost
+      : 'http://' + incomingHost;
+    const url = new URL(incoming.url || '/', proxyOrigin);
     if (url.pathname.startsWith('/api/') && incoming.headers['sec-fetch-site'] === 'cross-site') { outgoing.writeHead(403); outgoing.end('Cross-site request rejected'); return; }
     let response = ['GET', 'HEAD'].includes(incoming.method) ? staticResponse(url.pathname, incoming.method) : null;
     if (!response) {
