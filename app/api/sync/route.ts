@@ -1,4 +1,4 @@
-import {database,identity,json,sameOrigin} from '@/lib/server';
+import {audioKey,audioStorage,database,identity,json,sameOrigin} from '@/lib/server';
 import {tombstone} from '@/lib/records';
 import {z} from 'zod';
 const entry=z.object({id:z.string().min(1).max(100),kind:z.enum(['chat','message','template']),source:z.enum(['text','audio']).optional(),updated:z.number().int().nonnegative().max(1e15),created:z.number().int().nonnegative(),title:z.string().max(200).optional(),text:z.string().max(100000).optional(),chatId:z.string().max(100).optional(),provider:z.string().max(100).optional(),status:z.enum(['queued','processing','done','error','draft']).optional(),duration:z.number().nonnegative().optional(),error:z.string().max(1000).optional(),deleted:z.boolean().optional(),retryAt:z.number().optional(),attempts:z.number().optional()});
@@ -26,6 +26,8 @@ export async function POST(request:Request){
     WHERE owner=? AND EXISTS (SELECT 1 FROM records WHERE records.owner=transcripts.owner AND records.id=transcripts.id
      AND json_extract(payload,'$.status')='done' AND COALESCE(json_extract(payload,'$.deleted'),0)=0)`).bind(owner));
    await db.batch(batch);
+   const store=audioStorage();
+   if(store)await Promise.all(parsed.data.slice(i,i+50).filter(e=>e.deleted).map(e=>store.delete(audioKey(owner,e.id))));
   }
   const rows=await db.prepare('SELECT payload FROM records WHERE owner=?').bind(owner).all<{payload:string}>();
   return json({entries:rows.results.map(r=>JSON.parse(r.payload))});

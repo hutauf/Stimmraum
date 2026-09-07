@@ -5,6 +5,7 @@ import { existsSync, statSync, createReadStream } from 'node:fs';
 import { resolve, sep, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { openLocalDatabase } from './database.mjs';
+import { createLocalAudioStore } from './audio.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
@@ -16,7 +17,7 @@ const entrypoint = resolve(root, 'dist/server/index.js');
 if (!existsSync(entrypoint)) throw new Error('Build fehlt. Bitte zuerst npm run build:local ausführen.');
 const dataDirectory = resolve(root, process.env.STIMMRAUM_DATA_DIR || 'data');
 const database = openLocalDatabase(resolve(dataDirectory, 'stimmraum.sqlite'), resolve(root, 'drizzle'));
-const runtime = { DB: database };
+const runtime = { DB: database, AUDIO: createLocalAudioStore(resolve(dataDirectory, 'audio')) };
 for (const name of ['OPENAI_API_KEY','OPENAI_TRANSCRIBE_MODEL','GEMINI_API_KEY','GEMINI_MODEL','STT_BASE_URL','STT_MODEL','STT_API_KEY']) {
   if (process.env[name]) runtime[name] = process.env[name];
 }

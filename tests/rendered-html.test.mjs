@@ -32,3 +32,39 @@ test('text messages remain completed and retain their type during server synchro
  const response=await run('/api/sync',{method:'POST',headers:auth,body:JSON.stringify([message])});
  assert.equal(response.status,200);const saved=(await response.json()).entries[0];assert.equal(saved.source,'text');assert.equal(saved.status,'done');assert.equal(saved.text,message.text);assert.equal(saved.provider,undefined);
 });
+
+test('forced transcription reads archived audio and replaces the cached text',async()=>{
+ let savedText='Alte Transkription';
+ let fetchedKey='';
+ let providerRequest;
+ let updatedPayload;
+ Object.assign(globalThis.__stimmraumTestEnv,{
+  OPENAI_API_KEY:'test-key',
+  OPENAI_TRANSCRIBE_MODEL:'gpt-4o-mini-transcribe',
+  AUDIO:{
+   async get(key){fetchedKey=key;return {data:new Uint8Array([1,2,3]).buffer,name:'aufnahme.webm',type:'audio/webm'};},
+   async put(){},
+   async delete(){},
+  },
+  DB:{
+   prepare(sql){
+    return {
+     bind(...args){return {
+      first:async()=>sql.startsWith('SELECT payload')?{payload:JSON.stringify({status:'done',text:savedText})}:sql.startsWith('SELECT text')?{text:savedText}:null,
+      run:async()=>{if(sql.includes('UPDATE records'))updatedPayload=JSON.parse(args[0]);if(sql.includes('DO UPDATE'))savedText='Neue Transkription';},
+     };},
+    };
+   },
+   },
+  });
+  const originalFetch=globalThis.fetch;
+ globalThis.fetch=async(url,init)=>{providerRequest={url,init};return Response.json({text:'Neue Transkription'});};
+ try{
+  const form=new FormData();form.set('id','message-1');form.set('provider','openai');form.set('force','true');
+  const response=await run('/api/transcribe',{method:'POST',headers:auth,body:form});
+   const result=await response.json();assert.equal(response.status,200,JSON.stringify(result));assert.deepEqual(result,{text:'Neue Transkription'});
+   assert.equal(updatedPayload.text,'Neue Transkription');assert.equal(updatedPayload.provider,'openai');
+  assert.equal(fetchedKey,'test-owner:message-1');assert.equal(providerRequest.url,'https://api.openai.com/v1/audio/transcriptions');
+  const sent=providerRequest.init.body;assert.equal(sent.get('model'),'gpt-4o-mini-transcribe');assert.deepEqual([...new Uint8Array(await sent.get('file').arrayBuffer())],[1,2,3]);
+ }finally{globalThis.fetch=originalFetch;}
+});
