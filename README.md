@@ -37,13 +37,14 @@ Die geschützte Bereitstellung funktioniert bereits ohne API-Schlüssel zum Aufn
 | --- | --- |
 | OpenAI | `OPENAI_API_KEY`; optional `OPENAI_TRANSCRIBE_MODEL` (Standard `gpt-4o-mini-transcribe`) |
 | Gemini | `GEMINI_API_KEY`, `GEMINI_MODEL` (Audio-kompatibles Modell des eigenen Kontos) |
+| Deepgram | `DEEPGRAM_API_KEY`; optional `DEEPGRAM_MODEL` (Standard `nova-3`), `DEEPGRAM_LANGUAGE` (Standard `multi` = mehrsprachig inkl. Deutsch/Englisch-Mischung; `de` für reines Deutsch; `auto` für automatische Spracherkennung) |
 | Eigener STT-Server | `STT_BASE_URL` (HTTPS-API-Basis inklusive `/v1`), `STT_MODEL`; optional `STT_API_KEY` |
 
 Die Datei `.env.example` enthält ausschließlich die Namen und nicht geheime Standardwerte. Hosted-Variablen werden über die Sites-Umgebung verwaltet. Sie können bei einer weiteren Bereitstellung aktiviert werden. Der eigene Server muss `POST /audio/transcriptions` mit Multipart-Feldern `file`, `model`, `response_format=json` akzeptieren und `{ "text": "…" }` zurückgeben.
 
-Die Anbieteradapter liegen in `app/api/transcribe/route.ts`, die Verfügbarkeitsprüfung in `app/api/providers/route.ts`. OpenAI verwendet die Audio Transcriptions API. Gemini verwendet die GenerateContent API mit Inline-Audio. Adapter lassen sich unabhängig von der Oberfläche erweitern.
+Die Anbieteradapter liegen in `app/api/transcribe/route.ts`, die Verfügbarkeitsprüfung in `app/api/providers/route.ts`. OpenAI verwendet die Audio Transcriptions API. Gemini verwendet die GenerateContent API mit Inline-Audio. Deepgram verwendet die Pre-Recorded-API `POST /v1/listen` mit Smart Formatting und Absätzen. Adapter lassen sich unabhängig von der Oberfläche erweitern.
 
-Referenzen: https://developers.openai.com/api/docs/guides/speech-to-text und https://ai.google.dev/gemini-api/docs/audio .
+Referenzen: https://developers.openai.com/api/docs/guides/speech-to-text und https://ai.google.dev/gemini-api/docs/audio und https://developers.deepgram.com/docs/pre-recorded-audio .
 
 ## Verhalten und Grenzen des Prototyps
 

@@ -13,7 +13,7 @@ import {type Entry,mergeEntries,orderedMessages,chatText,tombstone,datetimeName,
 import {getEntries,saveEntries,saveAudio,getAudio,finishAudio,removeAudio} from '@/lib/local';
 import MicrophoneLevel from './microphone-level';
 type Provider={id:string;name:string;detail:string;ready:boolean};
-const defaultProviders:Provider[]=[{id:'openai',name:'OpenAI',detail:'Präzise Transkription',ready:false},{id:'gemini',name:'Google Gemini',detail:'Audio mit Gemini',ready:false},{id:'custom',name:'Eigener Server',detail:'OpenAI-kompatibel',ready:false}];
+const defaultProviders:Provider[]=[{id:'openai',name:'OpenAI',detail:'Präzise Transkription',ready:false},{id:'gemini',name:'Google Gemini',detail:'Audio mit Gemini',ready:false},{id:'deepgram',name:'Deepgram',detail:'Nova-3 Sprache-zu-Text',ready:false},{id:'custom',name:'Eigener Server',detail:'OpenAI-kompatibel',ready:false}];
 const defaults=[{id:'tpl-summary',title:'Zusammenfassung',text:'Fasse den folgenden Inhalt übersichtlich zusammen. Hebe die wichtigsten Punkte hervor.'},{id:'tpl-tasks',title:'Aufgabenliste',text:'Erstelle aus dem folgenden Inhalt eine klare Aufgabenliste. Nenne Verantwortliche und Termine nur, wenn sie im Text vorkommen.'},{id:'tpl-email',title:'E-Mail formulieren',text:'Formuliere aus den folgenden Notizen eine freundliche, klare E-Mail mit einem passenden Betreff. Erfinde keine zusätzlichen Fakten.'}];
 const time=(seconds=0)=>`${Math.floor(seconds/60).toString().padStart(2,'0')}:${Math.floor(seconds%60).toString().padStart(2,'0')}`;
 const newId=()=>crypto.randomUUID();

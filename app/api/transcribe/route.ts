@@ -2,10 +2,11 @@ import {audioKey,audioStorage,config,database,identity,json,sameOrigin} from '@/
 
 const MAX_AUDIO_BYTES=14*1024*1024;
 const MAX_REQUEST_BYTES=15*1024*1024;
-const providers=['openai','gemini','custom'];
+const providers=['openai','gemini','deepgram','custom'];
 
 function transcriptionText(provider:string,data:any){
  if(provider==='gemini')return typeof data?.output_text==='string'?data.output_text.trim():Array.isArray(data?.steps)?data.steps.flatMap((step:any)=>Array.isArray(step.content)?step.content.filter((part:any)=>part?.type==='text').map((part:any)=>part.text||''):[]).join('').trim():Array.isArray(data?.outputs)?data.outputs.flatMap((step:any)=>Array.isArray(step.content)?step.content.filter((part:any)=>part?.type==='text').map((part:any)=>part.text||''):step?.type==='text'?[step.text||'']:[]).join('').trim():'';
+ if(provider==='deepgram'){const alternative=data?.results?.channels?.[0]?.alternatives?.[0];const paragraphs=alternative?.paragraphs?.transcript;return typeof paragraphs==='string'&&paragraphs.trim()?paragraphs.trim():typeof alternative?.transcript==='string'?alternative.transcript.trim():'';}
  return typeof data?.text==='string'?data.text.trim():'';
 }
 
@@ -56,6 +57,12 @@ export async function POST(request:Request){
    if(!uploadResponse.ok)return json({error:'Gemini konnte die Audiodatei nicht verarbeiten.'},502);
    const uploadData=await uploadResponse.json() as any;const fileUri=uploadData.file?.uri;if(typeof fileUri!=='string'||!fileUri)return json({error:'Gemini hat keine Audiodatei-Referenz geliefert.'},502);
    response=await fetch('https://generativelanguage.googleapis.com/v1beta/interactions',{method:'POST',signal,headers:{'Content-Type':'application/json','x-goog-api-key':c.GEMINI_API_KEY},body:JSON.stringify({model:c.GEMINI_MODEL,input:[{type:'audio',uri:fileUri,mime_type:mimeType}],generation_config:{transcription_config:{language_codes:[],mode:'verbatim'}}})});
+  }else if(provider==='deepgram'){
+   if(!c.DEEPGRAM_API_KEY)return json({error:'Deepgram ist auf dem Server noch nicht eingerichtet.'},503);
+   const params=new URLSearchParams({model:c.DEEPGRAM_MODEL||'nova-3',smart_format:'true',punctuate:'true',paragraphs:'true'});
+   const language=(c.DEEPGRAM_LANGUAGE??'multi').trim();if(language==='auto')params.set('detect_language','true');else if(language)params.set('language',language);
+   const mimeType=audio.type.split(';')[0]||'audio/webm';
+   response=await fetch('https://api.deepgram.com/v1/listen?'+params.toString(),{method:'POST',signal,headers:{Authorization:'Token '+c.DEEPGRAM_API_KEY,'Content-Type':mimeType},body:new Uint8Array(await audio.arrayBuffer())});
   }else{
    const custom=provider==='custom';const key=custom?c.STT_API_KEY:c.OPENAI_API_KEY;
    if((!custom&&!key)||(custom&&(!c.STT_BASE_URL||!c.STT_MODEL)))return json({error:'Der Transkriptionsdienst ist auf dem Server noch nicht eingerichtet.'},503);

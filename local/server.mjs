@@ -18,7 +18,7 @@ if (!existsSync(entrypoint)) throw new Error('Build fehlt. Bitte zuerst npm run 
 const dataDirectory = resolve(root, process.env.STIMMRAUM_DATA_DIR || 'data');
 const database = openLocalDatabase(resolve(dataDirectory, 'stimmraum.sqlite'), resolve(root, 'drizzle'));
 const runtime = { DB: database, AUDIO: createLocalAudioStore(resolve(dataDirectory, 'audio')) };
-for (const name of ['OPENAI_API_KEY','OPENAI_TRANSCRIBE_MODEL','GEMINI_API_KEY','GEMINI_MODEL','STT_BASE_URL','STT_MODEL','STT_API_KEY']) {
+for (const name of ['OPENAI_API_KEY','OPENAI_TRANSCRIBE_MODEL','GEMINI_API_KEY','GEMINI_MODEL','DEEPGRAM_API_KEY','DEEPGRAM_MODEL','DEEPGRAM_LANGUAGE','STT_BASE_URL','STT_MODEL','STT_API_KEY']) {
   if (process.env[name]) runtime[name] = process.env[name];
 }
 // This adapter exists only in the explicitly launched local Node process.
