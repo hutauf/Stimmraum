@@ -44,7 +44,7 @@ test('local server serves app and persists edits/deletions across restart', asyn
     assert.equal((await fetch(server.url + asset[1])).status, 200);
     assert.equal((await fetch(server.url + '/manifest.webmanifest')).status, 200);
     const providers = await (await fetch(server.url + '/api/providers')).json();
-    assert.equal(providers.providers.length, 3);
+    assert.equal(providers.providers.length, 4);
     const badHostStatus = await new Promise((resolve,reject) => {
       const request = httpRequest(server.url + '/api/providers', {headers:{host:'attacker.example'}}, response => {response.resume();resolve(response.statusCode);});
       request.on('error',reject); request.end();

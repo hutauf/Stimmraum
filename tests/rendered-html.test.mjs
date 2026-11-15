@@ -76,18 +76,11 @@ test('deepgram sends raw audio to nova-3 and returns the paragraph transcript',a
   DB:{prepare(sql){return {bind(){return {first:async()=>sql.startsWith('SELECT text FROM transcripts')&&stored.done?{text:stored.done}:null,run:async()=>{}};}};}},
  });
  const originalFetch=globalThis.fetch;let providerRequest;
- globalThis.fetch=async(url,init)=>{providerRequest={url:String(url),init};stored.done='Hallo Welt.
-
-Zweiter Absatz.';return Response.json({results:{channels:[{alternatives:[{transcript:'Hallo Welt. Zweiter Absatz.',paragraphs:{transcript:'
-Hallo Welt.
-
-Zweiter Absatz.'}}]}]}});};
+ globalThis.fetch=async(url,init)=>{providerRequest={url:String(url),init};stored.done='Hallo Welt.\n\nZweiter Absatz.';return Response.json({results:{channels:[{alternatives:[{transcript:'Hallo Welt. Zweiter Absatz.',paragraphs:{transcript:'\nHallo Welt.\n\nZweiter Absatz.'}}]}]}});};
  try{
   const form=new FormData();form.set('id','dg-message');form.set('provider','deepgram');form.set('audio',new Blob([new Uint8Array([4,5,6])],{type:'audio/webm;codecs=opus'}),'aufnahme.webm');
   const response=await run('/api/transcribe',{method:'POST',headers:auth,body:form});
-  const result=await response.json();assert.equal(response.status,200,JSON.stringify(result));assert.equal(result.text,'Hallo Welt.
-
-Zweiter Absatz.');
+  const result=await response.json();assert.equal(response.status,200,JSON.stringify(result));assert.equal(result.text,'Hallo Welt.\n\nZweiter Absatz.');
   const url=new URL(providerRequest.url);assert.equal(url.origin+url.pathname,'https://api.deepgram.com/v1/listen');
   assert.equal(url.searchParams.get('model'),'nova-3');assert.equal(url.searchParams.get('language'),'multi');assert.equal(url.searchParams.get('smart_format'),'true');
   assert.equal(providerRequest.init.headers.Authorization,'Token dg-test-key');assert.equal(providerRequest.init.headers['Content-Type'],'audio/webm');
